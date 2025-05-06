@@ -1,0 +1,21 @@
+Paciente do sexo masculino, 58 anos, com dor torácica intensa há 20 minutos, irradiação para o braço esquerdo, sudorese, PA 180/100 mmHg. Classificação: Vermelha. Encaminhamento: Atendimento imediato na sala de emergência.
+Paciente jovem, 24 anos, com febre de 38,5ºC, tosse seca, dor de garganta e cefaleia há 3 dias. Saturação de oxigênio: 97%. Classificação: Verde. Encaminhamento: Consultório clínico para avaliação ambulatorial.
+Paciente idoso, 79 anos, com confusão mental súbita, pressão arterial 90/60 mmHg, glicemia capilar 60 mg/dL. Sem sinais de trauma. Classificação: Amarela. Encaminhamento: Avaliação médica prioritária e monitoramento.
+Paciente com vômito persistente e dor abdominal difusa há 6 horas, sem sinais de desidratação severa. Frequência cardíaca: 92 bpm. Classificação: Amarela. Encaminhamento: Sala de observação e hidratação venosa.
+Paciente com escoriações superficiais em joelho direito após queda de bicicleta. Sem dor significativa, sem fratura aparente. Classificação: Azul. Encaminhamento: Atendimento ambulatorial para curativo.
+Paciente com crise convulsiva ativa no momento da triagem, sem histórico conhecido. Classificação: Vermelha. Encaminhamento: Sala de emergência para contenção e avaliação neurológica.
+Paciente gestante, 36 semanas, relatando ausência de movimentos fetais há mais de 12 horas. Sem dor ou sangramento. Classificação: Laranja. Encaminhamento: Avaliação obstétrica urgente.
+Paciente com falta de ar aos mínimos esforços, tosse produtiva, chiado no peito. Saturação: 89%. Histórico de DPOC. Classificação: Laranja. Encaminhamento: Atendimento médico com suporte de oxigênio.
+Paciente com cefaleia intensa e rigidez de nuca. Temperatura: 39,2ºC. Relato de vômitos. Classificação: Laranja. Encaminhamento: Avaliação neurológica urgente e coleta de exames.
+Paciente com dor lombar crônica, sem irradiação, sem sinais de alarme. Mobilidade preservada. Classificação: Azul. Encaminhamento: Atendimento ambulatorial com analgesia simples.
+Paciente com taquicardia súbita, palpitações e tontura. Frequência cardíaca: 135 bpm. Classificação: Laranja. Encaminhamento: ECG urgente e avaliação médica.
+Paciente com dor de ouvido, febre baixa e leve irritação na garganta. Sem sinais de alarme. Classificação: Verde. Encaminhamento: Consultório clínico geral.
+Paciente com sangramento nasal abundante após trauma leve. Pressão arterial: 145/85 mmHg. Classificação: Amarela. Encaminhamento: Controle de sangramento e observação.
+Paciente com dor intensa no joelho esquerdo após entorse em jogo de futebol. Edema visível, sem deformidade. Classificação: Amarela. Encaminhamento: Avaliação ortopédica com raio-X.
+Paciente com tosse seca, dor torácica leve e cansaço. Sem febre. Classificação: Verde. Encaminhamento: Avaliação clínica de rotina.
+Paciente com dispneia súbita, cianose e confusão. Saturação: 82%. Classificação: Vermelha. Encaminhamento: Sala de emergência com oxigenoterapia imediata.
+Paciente com infecção urinária recorrente, disúria e urgência miccional. Afebril. Classificação: Verde. Encaminhamento: Avaliação médica e prescrição antibiótica.
+Paciente com trauma craniano leve, consciente, sem vômitos ou perda de memória. Classificação: Amarela. Encaminhamento: Observação neurológica.
+Paciente com reação alérgica cutânea moderada após ingestão de camarão. Sem sinais de anafilaxia. Classificação: Amarela. Encaminhamento: Administração de anti-histamínico e observação.
+Paciente com perda súbita de força no braço esquerdo, fala arrastada. Início há 30 minutos. Classificação: Vermelha. Encaminhamento: Protocolo AVC – avaliação neurológica urgente.
+
