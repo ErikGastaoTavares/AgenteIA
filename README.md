@@ -10,11 +10,11 @@ O assistente recebe **sintomas clínicos** como entrada, busca **casos semelhant
 
 ### Funcionamento geral do assistente
 
-<img src="figs/AgenteIA.png" alt="Fluxo do Assistente de IA" width="500"/>
+<img src="AssistenteIA/figs/AgenteIA.png" alt="Fluxo do Assistente de IA" width="500"/>
 
 ### Cores e classificações do Protocolo de Manchester
 
-<img src="figs/infografico-protocolo-manchester.jpg" alt="Protocolo de Manchester" width="450"/>
+<img src="AssistenteIA/figs/infografico-protocolo-manchester.jpg" alt="Protocolo de Manchester" width="450"/>
 
 ---
 
@@ -112,7 +112,7 @@ Abra o navegador em:
 
 #### Exemplo da interface em execução:
 
-<img src="figs/interface.png" alt="Interface do Assistente de Triagem" width="600"/>
+<img src="AssistenteIA/figs/interface.png" alt="Interface do Assistente de Triagem" width="600"/>
 
 ---
 
