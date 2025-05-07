@@ -92,7 +92,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 ## Executar o Aplicativo
 
 ```powershell
-streamlit run app.py
+streamlit run AppTriagem.py
 ```
 
 Abra o navegador em:
