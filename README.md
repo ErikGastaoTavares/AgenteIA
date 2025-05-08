@@ -10,7 +10,7 @@ O assistente recebe **sintomas clínicos** como entrada, busca **casos semelhant
 
 ### Cores e classificações do Protocolo de Manchester
 
-<img src="figs/infografico-protocolo-manchester.jpg" alt="Protocolo de Manchester" width="450"/>
+<img src="figs/infografico-protocolo-manchester.webp" alt="Protocolo de Manchester" width="450"/>
 
 ---
 
