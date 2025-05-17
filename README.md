@@ -1,144 +1,120 @@
 # Assistente de IA para Triagem Clínica
 
-Este projeto implementa um assistente de IA com interface web para triagem clínica automatizada, utilizando **embeddings semânticos**, **banco vetorial (ChromaDB)** e um **modelo local (Mistral via Ollama)**.
-
----
-
 ## Visão Geral
-
-O assistente recebe **sintomas clínicos** como entrada, busca **casos semelhantes** em um banco vetorial e classifica o paciente conforme o **Protocolo de Manchester**, fornecendo também **condutas iniciais**.
-
-### Cores e classificações do Protocolo de Manchester
+Sistema de triagem clínica automatizada que utiliza:
+- **Embeddings semânticos** para análise contextual
+- **Banco vetorial (ChromaDB)** para armazenamento
+- **Modelo local Mistral** (via Ollama) para classificação
+- **Protocolo de Manchester** para triagem
 
 <img src="figs/infografico-protocolo-manchester.webp" alt="Protocolo de Manchester" width="450"/>
 
----
+## Requisitos do Sistema
+- Windows 10 ou superior
+- 8 GB+ RAM recomendado
+- 10 GB+ espaço em disco
+- Suporte à virtualização
 
-## Pré-requisitos
+## Instalação
 
-- **Sistema operacional:** Windows 10 ou superior  
-- **Memória RAM recomendada:** 8 GB ou mais  
-- **Espaço em disco:** 10 GB ou mais  
-
----
-
-## Etapas de Instalação
-
-### 1. Instalar o Ollama
-
-> O Ollama roda modelos LLM localmente. Requer suporte à virtualização.
-
-- Baixe: [https://ollama.com/download](https://ollama.com/download)
-- Após a instalação, teste no terminal:
-
+### 1. Ollama e Modelo
 ```bash
+# Instalar Ollama de https://ollama.com/download
 ollama list
-```
-
----
-
-### 2. Baixar o modelo `mistral`
-
-```bash
 ollama pull mistral
 ```
 
-> Obs.: O modelo `llama3` pode exigir mais memória RAM.
-
----
-
-### 3. Instalar Python 3.10.x
-
-- Baixe: [Python 3.10.11](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe)
-- Marque a opção **Add Python to PATH**
-- Verifique a versão instalada:
-
+### 2. Python e Ambiente
 ```bash
-python --version
-```
-
----
-
-### 4. Criar ambiente virtual
-
-```powershell
-cd "C:\Users\SEU_USUARIO\SUA_PASTA"
+# Instalar Python 3.10.11 de python.org
 python -m venv venv310
 .\venv310\Scripts\Activate.ps1
-```
 
----
-
-### 5. Instalar dependências
-
-```bash
+# Dependências
 pip install --upgrade pip
-pip install streamlit
-pip install llama-index
-pip install --upgrade llama-index
+pip install streamlit llama-index chromadb sentence-transformers nest_asyncio
 pip install llama-index[llms]
-pip install chromadb
-pip install sentence-transformers
-pip install nest_asyncio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
----
+## Uso do Sistema
 
-## Executar o Aplicativo
-
-```powershell
+### Aplicativo de Triagem (AppTriagem.py)
+```bash
 streamlit run AppTriagem.py
 ```
+Acesse: http://localhost:8501
 
-Abra o navegador em:
-
-[http://localhost:8501](http://localhost:8501)
-
----
-
-## Interface Esperada
-
-- Campo para **descrição dos sintomas**
-- Botão **“Classificar e gerar conduta”**
-- Resultado com:
-  - **Classificação de risco**
-  - **Justificativa clínica**
-  - **Condutas iniciais recomendadas**
-
-#### Exemplo da interface em execução:
+Funcionalidades:
+- Campo para descrição de sintomas
+- Classificação de risco automática
+- Justificativa clínica
+- Condutas recomendadas
 
 <img src="figs/interface.png" alt="Interface do Assistente de Triagem" width="600"/>
 
----
+### Painel Administrativo (AppAdminMedico.py)
+- Sistema de autenticação (admin/médico/enfermeiro)
+- Dashboard estatístico
+- Validação de triagens
+- Gestão do banco de conhecimento
+- Exportação de dados
 
-## Visualizar dados com DB Browser for SQLite
+### Banco de Dados
+- **SQLite**
+  - Armazenamento de triagens pendentes
+  - Gerenciamento de usuários e autenticação
+  - Registro de validações
+  - Visualização via DB Browser for SQLite (sqlitebrowser.org)
 
-1. Baixe: [https://sqlitebrowser.org](https://sqlitebrowser.org)
-2. Abra o diretório `./chroma_db/`
-3. Execute consultas SQL como:
+- **ChromaDB**
+  - Armazenamento de embeddings semânticos
+  - Base de conhecimento de casos clínicos
+  - Busca contextual para similaridade
 
+Consultas úteis SQLite:
+```sql
+-- Visualizar triagens pendentes
+SELECT * FROM triagens_pendentes;
+
+-- Verificar usuários do sistema
+SELECT * FROM usuarios;
+
+-- Consultar histórico de validações
+SELECT * FROM validacoes;
+```
+
+Consultas úteis:
 ```sql
 SELECT * FROM collections;
 SELECT * FROM embeddings;
 SELECT * FROM embeddings_queue;
 ```
 
----
+### Estrutura do Banco de Dados
 
-## Exemplos de Casos Armazenados
+O esquema completo do banco de dados está disponível em `database_schema.sql`. 
 
-```text
-case_0: Paciente do sexo masculino, 58 anos, com dor torácica intensa...
-case_7: Paciente com falta de ar aos mínimos esforços, tosse produtiva...
-case_15: Paciente com dispneia súbita, cianose e confusão...
-case_19: Paciente com perda súbita de força no braço esquerdo...
-```
+Principais tabelas:
+- `validacao_triagem`: Armazena as triagens realizadas
+- `usuarios`: Gerencia autenticação e perfis
+- `validacoes`: Mantém histórico de validações
 
----
+Para visualizar os dados:
+1. Instale DB Browser for SQLite (https://sqlitebrowser.org/)
+2. Abra o arquivo `validacao_triagem.db`
+3. Use a aba "Browse Data" para explorar as tabelas
 
-## Links Úteis
+### Para visualizar o esquema
+sqlite3 validacao_triagem.db ".read database_schema.sql"
 
+## Ciclo de Aprendizado
+1. Profissionais realizam triagens
+2. Especialistas validam casos
+3. Casos validados alimentam banco vetorial
+4. Sistema aprende continuamente
+
+## Links de Referência
 - [LlamaIndex](https://docs.llamaindex.ai/en/stable/)
 - [ChromaDB](https://docs.trychroma.com/)
 - [Ollama](https://ollama.com/)
