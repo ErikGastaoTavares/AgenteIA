@@ -6,6 +6,7 @@ import os
 import chromadb
 from sentence_transformers import SentenceTransformer
 from typing import List
+from pathlib import Path
 
 # Configuração da página
 st.set_page_config(
@@ -92,6 +93,14 @@ def adicionar_caso_validado(sintomas, resposta, feedback):
         # Conectar ao ChromaDB
         chroma_client = chromadb.PersistentClient(path="./chroma_db")
         collection_name = "triagem_hci"
+        
+        # Formatar o caso para salvar no arquivo
+        caso_formatado = f"{sintomas} Classificação: {resposta}."
+        if feedback:
+            caso_formatado += f" Feedback especialista: {feedback}"
+        
+        # Salvar no arquivo de casos validados
+        save_to_validated_cases(caso_formatado)
         
         # Verificar se a coleção existe
         collections = chroma_client.list_collections()
@@ -302,6 +311,18 @@ def autenticar(username, password):
     if username in usuarios_validos and usuarios_validos[username] == password:
         return True
     return False
+
+# Função para salvar casos validados no arquivo
+def save_to_validated_cases(case: str):
+    """Salva um caso validado no arquivo validated_cases.txt"""
+    try:
+        filepath = Path(__file__).parent / "data" / "validated_cases.txt"
+        with open(filepath, "a", encoding="utf-8") as f:
+            f.write(f"\n{case}")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar caso validado: {e}")
+        return False
 
 # Inicialização da sessão
 if 'autenticado' not in st.session_state:

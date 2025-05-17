@@ -2,12 +2,12 @@ from typing import List # Importa o tipo de dado List usado para anotar funçõe
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning) # Ignora mensagens de alerta do tipo UserWarning (apenas para deixar a interface limpa)
 import streamlit as st # Importa a biblioteca de interface web Streamlit
-from llama_index.core.llms import ChatMessage # Importa classes do LlamaIndex para usar um modelo de linguagem (LLM)
-from llama_index.llms.ollama import Ollama
 from llama_index.core import Settings
+from llama_index.llms.ollama import Ollama 
+from llama_index.core.llms import ChatMessage # Importa classes do LlamaIndex para usar um modelo de linguagem (LLM)
 # Permite usar asyncio dentro do Streamlit sem conflito. Asyncio permite que múltiplas tarefas rodem ao mesmo tempo, sem travar.
 import nest_asyncio
-nest_asyncio.apply()
+nest_asyncio.apply()  
 # Importa o ChromaDB, um banco de dados vetorial para armazenar e buscar embeddings
 import chromadb
 # Importa sqlite3 para armazenar as respostas para validação
@@ -16,6 +16,7 @@ import sqlite3
 from datetime import datetime
 # Importa uuid para gerar identificadores únicos
 import uuid
+from pathlib import Path
 
 # Função para inicializar o banco de dados de validação
 def init_validation_db():
@@ -58,6 +59,67 @@ def salvar_para_validacao(sintomas, resposta):
     conn.close()
     
     return triagem_id
+
+# Função para carregar casos a partir de arquivos texto
+def load_cases_from_file(filepath: Path) -> List[str]:
+    """Carrega casos de um arquivo de texto"""
+    if not filepath.exists():
+        return []
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip() and not line.startswith("#")]
+
+# Função para carregar todos os casos a partir dos diferentes arquivos
+def load_all_cases() -> List[str]:
+    """Carrega todos os casos dos diferentes arquivos"""
+    data_dir = Path(__file__).parent / "data"
+    
+    # Casos fallback (mínimo necessário para o sistema funcionar)
+    fallback_cases = [
+        "Paciente com dor torácica intensa, dispneia súbita. Classificação: Vermelha. Encaminhamento: Emergência.",
+    ]
+    
+    try:
+        cases = []
+        
+        # Carrega casos de cada arquivo
+        base_cases = load_cases_from_file(data_dir / "base_cases.txt")
+        new_cases = load_cases_from_file(data_dir / "new_cases.txt")
+        validated_cases = load_cases_from_file(data_dir / "validated_cases.txt")
+        
+        # Combina todos os casos
+        cases.extend(base_cases)
+        cases.extend(new_cases)
+        cases.extend(validated_cases)
+        
+        return cases if cases else fallback_cases
+    except Exception as e:
+        st.error(f"Erro ao carregar casos: {e}")
+        return fallback_cases
+
+# Função para salvar um novo caso no arquivo new_cases.txt
+def save_new_case(case: str):
+    """Salva um novo caso no arquivo new_cases.txt"""
+    try:
+        filepath = Path(__file__).parent / "data" / "new_cases.txt"
+        with open(filepath, "a", encoding="utf-8") as f:
+            f.write(f"\n{case}")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar novo caso: {e}")
+        return False
+
+# Função para salvar um caso validado no arquivo validated_cases.txt
+def save_validated_case(case: str):
+    """Salva um caso validado no arquivo validated_cases.txt"""
+    try:
+        filepath = Path(__file__).parent / "data" / "validated_cases.txt"
+        with open(filepath, "a", encoding="utf-8") as f:
+            f.write(f"\n{case}")
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar caso validado: {e}")
+        return False
 
 # Inicializa o banco de dados de validação
 init_validation_db()
@@ -118,34 +180,54 @@ if st.button("Classificar e gerar conduta"):
                 # Aplica o modelo para transformar o texto em vetor (tensor)
                 embeddings = model.encode([text], convert_to_tensor=True)
                 # Converte o tensor para lista de floats e retorna
-                return embeddings.cpu().numpy()[0].tolist()
+                return embeddings.cpu().numpy()[0].tolist()            # Os casos base já foram inicializados pela função init_base_cases
 
-            # Função para ler os casos de triagem simulados a partir do arquivo "casos.txt"
-            def load_triagem_cases(filepath: str) -> List[str]:
-                # Abre o arquivo e retorna apenas linhas não vazias
-                with open(filepath, "r", encoding="utf-8") as file:
-                    return [line.strip() for line in file if line.strip()]
+            # Função para carregar casos iniciais do SQLite
+            def carregar_casos_iniciais():
+                """Carrega casos iniciais do SQLite"""
+                try:
+                    conn = sqlite3.connect('./validacao_triagem.db')
+                    cursor = conn.cursor()
+                    
+                    # Busca casos ativos
+                    cursor.execute("SELECT sintomas, classificacao, encaminhamento FROM casos_iniciais WHERE ativo = 1")
+                    casos = cursor.fetchall()
+                    conn.close()
+                    
+                    # Formata casos para o formato padrão
+                    casos_formatados = []
+                    for sintomas, classificacao, encaminhamento in casos:
+                        caso = f"{sintomas}. Classificação: {classificacao}. Encaminhamento: {encaminhamento}."
+                        casos_formatados.append(caso)
+                        
+                    return casos_formatados
+                except Exception as e:
+                    st.error(f"Erro ao carregar casos iniciais: {e}")
+                    return []
 
-            # Carrega os casos simulados do arquivo
-            triagem_cases = load_triagem_cases("casos.txt")
+            # Inicializa o banco com casos base
+            def init_base_cases(collection):
+                """Inicializa o banco com casos base se estiver vazio"""
+                # Verifica se já existem casos no banco
+                existing_cases = collection.get()
+                if len(existing_cases["ids"]) > 0:
+                    return
 
-            # Recupera os IDs já existentes no banco vetorial para evitar duplicação
-            existing_ids = set(collection.get()["ids"])
-
-            # Para cada caso do arquivo
-            for i, case in enumerate(triagem_cases):
-                # Cria um ID único com base no índice
-                case_id = f"case_{i}"
-                # Adiciona o caso no banco apenas se ainda não existir
-                if case_id not in existing_ids:
-                    # Converte o caso em embedding
-                    embedding = embed_text(case)
-                    # Adiciona o vetor ao banco com o ID e metadado de conteúdo textual
+                # Carrega casos do SQLite
+                casos_base = carregar_casos_iniciais()
+                
+                # Adiciona cada caso ao banco
+                for i, caso in enumerate(casos_base):
+                    case_id = f"base_case_{i}"
+                    embedding = embed_text(caso)
                     collection.add(
                         embeddings=[embedding],
                         ids=[case_id],
-                        metadatas=[{"content": case}]  # Armazena o texto original como metadado
+                        metadatas=[{"content": caso}]
                     )
+
+            # Inicializa o banco com casos base
+            init_base_cases(collection)
 
             # Converte os sintomas informados pelo usuário em vetor (embedding)
             query_embedding = embed_text(new_case)

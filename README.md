@@ -33,7 +33,7 @@ python -m venv venv310
 # Dependências
 pip install --upgrade pip
 pip install streamlit llama-index chromadb sentence-transformers nest_asyncio
-pip install llama-index[llms]
+pip install llama-index-llms-ollama
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
@@ -41,6 +41,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ### Aplicativo de Triagem (AppTriagem.py)
 ```bash
+cd AssistenteIA
 streamlit run AppTriagem.py
 ```
 Acesse: http://localhost:8501
@@ -65,12 +66,14 @@ Funcionalidades:
   - Armazenamento de triagens pendentes
   - Gerenciamento de usuários e autenticação
   - Registro de validações
+  - Base de casos iniciais de triagem
   - Visualização via DB Browser for SQLite (sqlitebrowser.org)
 
 - **ChromaDB**
   - Armazenamento de embeddings semânticos
   - Base de conhecimento de casos clínicos
   - Busca contextual para similaridade
+  - Armazenamento de casos validados
 
 Consultas úteis SQLite:
 ```sql
@@ -82,13 +85,9 @@ SELECT * FROM usuarios;
 
 -- Consultar histórico de validações
 SELECT * FROM validacoes;
-```
 
-Consultas úteis:
-```sql
-SELECT * FROM collections;
-SELECT * FROM embeddings;
-SELECT * FROM embeddings_queue;
+-- Consultar casos iniciais ativos
+SELECT * FROM casos_iniciais WHERE ativo = 1;
 ```
 
 ### Estrutura do Banco de Dados
@@ -99,11 +98,18 @@ Principais tabelas:
 - `validacao_triagem`: Armazena as triagens realizadas
 - `usuarios`: Gerencia autenticação e perfis
 - `validacoes`: Mantém histórico de validações
+- `casos_iniciais`: Armazena casos base do sistema
 
 Para visualizar os dados:
 1. Instale DB Browser for SQLite (https://sqlitebrowser.org/)
 2. Abra o arquivo `validacao_triagem.db`
 3. Use a aba "Browse Data" para explorar as tabelas
+
+Para gerenciar casos iniciais:
+1. Use o DB Browser for SQLite
+2. Acesse a tabela `casos_iniciais`
+3. Você pode adicionar, editar ou desativar casos base
+4. Os casos ativos (ativo = 1) serão carregados automaticamente no sistema
 
 ### Para visualizar o esquema
 sqlite3 validacao_triagem.db ".read database_schema.sql"
