@@ -25,32 +25,40 @@ import torch
 
 # Configuração do tema personalizado do HCI
 st.set_page_config(
-    page_title="HCI",
-    page_icon="https://hci.org.br/wp-content/uploads/2024/09/logo-300x67.png",
+    page_title="Triagem Inteligente HCI",
+    page_icon="https://hci.org.br/wp-content/uploads/2023/07/cropped-fav-32x32.png",
     layout="wide"
 )
 
 # Aplica o estilo customizado com as cores do HCI
 css = '''
 <style>
-    /* Importa as fontes do Google Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap')
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
+    @font-face {
+    font-family: 'Montserrat';
+    src: url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap') format('woff2');
+    font-weight: Bold;
+    font-style: normal;
+    font-display: swap;
+    }    /* Importa as fontes do Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
     
     /* Cores principais do HCI */
     :root {
+        --color-scheme: light !important;
         --hci-azul: #003B71;
         --hci-azul-claro: #0072C6;
         --hci-verde: #009B3A;
         --hci-cinza: #58595B;
         --hci-branco: #FFFFFF;
-        --hci-font: 'Montserrat Semibold', sans-serif;
+        --hci-font: 'Montserrat', sans-serif;
     }/* Define o fundo branco para toda a aplicação */
     section[data-testid="stSidebar"],
     .main,
     [data-testid="stAppViewContainer"] {
         background-color: white !important;
-    }    /* Define a fonte e cor do texto para toda a aplicação */
+    }    
+    
+    /* Define a fonte e cor do texto para toda a aplicação */
     .stMarkdown, 
     .stText,
     p, 
@@ -79,14 +87,13 @@ css = '''
         padding: 1rem;
         margin-bottom: 2rem;
     }
-    
-    /* Botões */
+      /* Botões */
     .stButton>button {
         background-color: var(--hci-azul) !important;
         color: hci-branco !important;
         font-weight: 900 !important;
         text-transform: uppercase !important;
-        font-family: 'Segoe UI Black', 'Segoe UI', sans-serif !important;
+        font-family: 'Montserrat Semibold', sans-serif !important;
         border: none !important;
         padding: 0.6rem 1.2rem !important;
         text-align: center !important;
@@ -99,7 +106,8 @@ css = '''
         text-transform: uppercase !important;
         letter-spacing: 0.05rem !important;
         margin: 0 !important;  /* remove espaçamento padrão do <p> */
-    
+    }
+        
     .stButton>button:hover {
         background-color: var(--hci-azul-claro) !important;
     }
@@ -107,20 +115,23 @@ css = '''
       /* Área de texto */
 
     .stTextArea>div>div>textarea {
+        font-family: 'Montserrat', sans-serif !important;
         border: 2px solid var(--hci-azul) !important;
         border-radius: 5px !important;
-        background-color: white !important;
+        background-color: #ffffff !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
         padding: 0.75rem !important;
+        forced-color-adjust: none !important;
     }
     
     /* Containers e seções */
     .stTab {
-        font-family: 'Montserrat SemiBold', sans-serif !important;
-        background-color: #f8f9fa !important;
+        font-family: 'Montserrat', sans-serif !important;
+        background-color: #ffffff !important;
         padding: 1rem !important;
         border-radius: 5px !important;
         margin-bottom: 1rem !important;
+        forced-color-adjust: none !important;
     }
     
     /* Links */
@@ -286,7 +297,12 @@ for i, (sintomas, resposta) in enumerate(casos_validados):
 # =============================================
 
 # Cria um campo de texto onde enfermeiro(a) (ou outro profissional de saúde) pode informar os sintomas do paciente
-new_case = st.text_area("Descreva os sintomas do paciente na triagem")
+new_case = st.text_area(
+    "🩺 Descreva os sintomas do paciente",
+    placeholder="Exemplo: Paciente apresenta febre alta, tosse seca e dificuldade para respirar.",
+    height=100,
+    key="sintomas_input"
+)
 
 # Quando o botão é clicado, o sistema começa a análise
 if st.button("Classificar e gerar conduta"):
@@ -451,4 +467,4 @@ with tab2:
 # RODAPÉ
 # =============================================================================
 st.markdown("---")
-st.caption("Sistema desenvolvido conforme o Protocolo de Manchester e diretrizes do Hospital de Clínicas de Ijuí")
+st.caption("Sistema desenvolvido conforme o Protocolo de Manchester")
