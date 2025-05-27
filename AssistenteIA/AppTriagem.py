@@ -39,7 +39,9 @@ css = '''
     font-weight: Bold;
     font-style: normal;
     font-display: swap;
-    }    /* Importa as fontes do Google Fonts */
+    }    
+    
+    /* Importa as fontes do Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
     
     /* Cores principais do HCI */
@@ -51,7 +53,9 @@ css = '''
         --hci-cinza: #58595B;
         --hci-branco: #FFFFFF;
         --hci-font: 'Montserrat', sans-serif;
-    }/* Define o fundo branco para toda a aplicação */
+    }
+    
+    /* Define o fundo branco para toda a aplicação */
     section[data-testid="stSidebar"],
     .main,
     [data-testid="stAppViewContainer"] {
@@ -59,6 +63,10 @@ css = '''
     }    
     
     /* Define a fonte e cor do texto para toda a aplicação */
+    * {
+        font-family: var(--hci-font) !important;
+    }
+    
     .stMarkdown, 
     .stText,
     p, 
@@ -66,8 +74,39 @@ css = '''
     div:not([class*="st-"]),
     input,
     textarea,
+    placeholder,
     .stTextArea,
     button,
+    label,
+    .stSelectbox,
+    .stMultiSelect,
+    .stSlider,
+    .stNumberInput,
+    .stDateInput,
+    .stTimeInput,
+    .stFileUploader,
+    .stColorPicker,
+    .stCheckbox,
+    .stRadio,
+    .stExpander,
+    .stContainer,
+    .stColumns,
+    .stTabs,
+    .stSidebar,
+    .stMetric,
+    .stAlert,
+    .stSuccess,
+    .stInfo,
+    .stWarning,
+    .stError,
+    .stException,
+    .stSpinner,
+    .stProgress,
+    .stCaption,
+    .stCode,
+    .stJson,
+    .stDataFrame,
+    .stTable,
     h1, h2, h3, h4, h5, h6 {
         font-family: var(--hci-font) !important;
         color: black !important;
@@ -93,7 +132,7 @@ css = '''
         color: hci-branco !important;
         font-weight: 900 !important;
         text-transform: uppercase !important;
-        font-family: 'Montserrat Semibold', sans-serif !important;
+        font-family: 'Montserrat Bold', sans-serif !important;
         border: none !important;
         padding: 0.6rem 1.2rem !important;
         text-align: center !important;
@@ -113,15 +152,21 @@ css = '''
     }
 
       /* Área de texto */
-
     .stTextArea>div>div>textarea {
         font-family: 'Montserrat', sans-serif !important;
         border: 2px solid var(--hci-azul) !important;
         border-radius: 5px !important;
         background-color: #ffffff !important;
+        color: #000000 !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
         padding: 0.75rem !important;
         forced-color-adjust: none !important;
+    }
+
+    .stTextArea>div>div>textarea::placeholder {
+        color: var(--hci-cinza) !important;
+        opacity: 1 !important;                /* sem transparência */
+        font-family: 'Montserrat', sans-serif !important;
     }
     
     /* Containers e seções */
@@ -133,7 +178,7 @@ css = '''
         margin-bottom: 1rem !important;
         forced-color-adjust: none !important;
     }
-    
+
     /* Links */
     a {
         color: var(--hci-azul) !important;
@@ -163,7 +208,7 @@ st.markdown("""
         <img src="https://hci.org.br/wp-content/uploads/2024/09/logo.png" 
              alt="Logo HCI" 
              style="max-width: 300px; margin-bottom: 1rem;">
-        <h2 style='color: #009B3A; font-size: 1.5rem; margin-top: 0;'>Sistema de Triagem</h2>
+        <h2 style='color: #009B3A; font-size: 1.5rem; margin-top: 0; font-family: Montserrat, sans-serif;'>Sistema de Triagem</h2>
     </div>
 """, unsafe_allow_html=True)
 
@@ -296,13 +341,13 @@ for i, (sintomas, resposta) in enumerate(casos_validados):
 # INTERFACE PRINCIPAL
 # =============================================
 
+
 # Cria um campo de texto onde enfermeiro(a) (ou outro profissional de saúde) pode informar os sintomas do paciente
-new_case = st.text_area(
-    "🩺 Descreva os sintomas do paciente",
-    placeholder="Exemplo: Paciente apresenta febre alta, tosse seca e dificuldade para respirar.",
-    height=100,
-    key="sintomas_input"
-)
+new_case = st.text_area( 
+    "Descreva os sintomas do paciente",
+    value="",
+    placeholder="Exemplo: Paciente masculino apresenta febre alta, tosse seca e dificuldade para respirar."
+    )
 
 # Quando o botão é clicado, o sistema começa a análise
 if st.button("Classificar e gerar conduta"):
@@ -363,15 +408,15 @@ Condutas
                   # Extrai a classificação de risco do texto da resposta
                 texto_resposta = str(resposta).lower()
                 if "vermelho" in texto_resposta:
-                    st.markdown("<div style='background-color: #FF0000; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🔴 Classificação: EMERGÊNCIA (VERMELHO)</h3></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background-color: #FF0000; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: Montserrat, sans-serif;'><h3 style='margin:0; font-family: Montserrat, sans-serif;'>🔴 Classificação: EMERGÊNCIA (VERMELHO)</h3></div>", unsafe_allow_html=True)
                 elif "laranja" in texto_resposta:
-                    st.markdown("<div style='background-color: #FF7F00; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟠 Classificação: MUITO URGENTE (LARANJA)</h3></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background-color: #FF7F00; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: Montserrat, sans-serif;'><h3 style='margin:0; font-family: Montserrat, sans-serif;'>🟠 Classificação: MUITO URGENTE (LARANJA)</h3></div>", unsafe_allow_html=True)
                 elif "amarelo" in texto_resposta:
-                    st.markdown("<div style='background-color: #FFFF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟡 Classificação: URGENTE (AMARELO)</h3></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background-color: #FFFF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: Montserrat, sans-serif;'><h3 style='margin:0; font-family: Montserrat, sans-serif;'>🟡 Classificação: URGENTE (AMARELO)</h3></div>", unsafe_allow_html=True)
                 elif "verde" in texto_resposta:
-                    st.markdown("<div style='background-color: #00FF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟢 Classificação: POUCO URGENTE (VERDE)</h3></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background-color: #00FF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: Montserrat, sans-serif;'><h3 style='margin:0; font-family: Montserrat, sans-serif;'>🟢 Classificação: POUCO URGENTE (VERDE)</h3></div>", unsafe_allow_html=True)
                 elif "azul" in texto_resposta:
-                    st.markdown("<div style='background-color: #0000FF; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🔵 Classificação: NÃO URGENTE (AZUL)</h3></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='background-color: #0000FF; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: Montserrat, sans-serif;'><h3 style='margin:0; font-family: Montserrat, sans-serif;'>🔵 Classificação: NÃO URGENTE (AZUL)</h3></div>", unsafe_allow_html=True)
                 
                 # Divide a resposta em seções
                 st.markdown("### Justificativa Clínica")
