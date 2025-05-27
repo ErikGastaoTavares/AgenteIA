@@ -23,6 +23,137 @@ from pathlib import Path
 from transformers import AutoTokenizer, AutoModel
 import torch
 
+# Configuração do tema personalizado do HCI
+st.set_page_config(
+    page_title="HCI",
+    page_icon="https://hci.org.br/wp-content/uploads/2024/09/logo-300x67.png",
+    layout="wide"
+)
+
+# Aplica o estilo customizado com as cores do HCI
+css = '''
+<style>
+    /* Importa as fontes do Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap')
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&display=swap');
+    
+    /* Cores principais do HCI */
+    :root {
+        --hci-azul: #003B71;
+        --hci-azul-claro: #0072C6;
+        --hci-verde: #009B3A;
+        --hci-cinza: #58595B;
+        --hci-branco: #FFFFFF;
+        --hci-font: 'Montserrat Semibold', sans-serif;
+    }/* Define o fundo branco para toda a aplicação */
+    section[data-testid="stSidebar"],
+    .main,
+    [data-testid="stAppViewContainer"] {
+        background-color: white !important;
+    }    /* Define a fonte e cor do texto para toda a aplicação */
+    .stMarkdown, 
+    .stText,
+    p, 
+    span,
+    div:not([class*="st-"]),
+    input,
+    textarea,
+    .stTextArea,
+    button,
+    h1, h2, h3, h4, h5, h6 {
+        font-family: var(--hci-font) !important;
+        color: black !important;
+    }
+    
+    /* Estilo do cabeçalho */
+    .stApp header {
+        background-color: var(--hci-azul) !important;
+    }
+    
+    /* Título principal */
+    .title {
+        color: var(--hci-azul);
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    /* Botões */
+    .stButton>button {
+        background-color: var(--hci-azul) !important;
+        color: hci-branco !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        font-family: 'Segoe UI Black', 'Segoe UI', sans-serif !important;
+        border: none !important;
+        padding: 0.6rem 1.2rem !important;
+        text-align: center !important;
+    }
+
+    /* Corrige a cor e destaque do texto dentro do botão */
+    .stButton p {
+        color: white !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05rem !important;
+        margin: 0 !important;  /* remove espaçamento padrão do <p> */
+    
+    .stButton>button:hover {
+        background-color: var(--hci-azul-claro) !important;
+    }
+      /* Área de texto */
+    .stTextArea>div>div>textarea {
+        border: 2px solid var(--hci-azul) !important;
+        border-radius: 5px !important;
+        background-color: white !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        padding: 0.75rem !important;
+    }
+    
+    /* Containers e seções */
+    .stTab {
+        font-family: 'Montserrat SemiBold', sans-serif !important;
+        background-color: #f8f9fa !important;
+        padding: 1rem !important;
+        border-radius: 5px !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Links */
+    a {
+        color: var(--hci-azul) !important;
+    }
+    
+    a:hover {
+        color: var(--hci-azul) !important;
+    }
+    
+    /* Títulos */
+    h1, h2, h3 {
+        color: var(--hci-azul) !important;
+    }
+    
+    /* Textos de status */
+    .success {
+        color: var(--hci-verde) !important;
+    }
+</style>
+'''
+
+st.markdown(css, unsafe_allow_html=True)
+
+# Adiciona o logo do HCI
+st.markdown("""
+    <div style='text-align: center; margin-bottom: 2rem;'>
+        <img src="https://hci.org.br/wp-content/uploads/2024/09/logo.png" 
+             alt="Logo HCI" 
+             style="max-width: 300px; margin-bottom: 1rem;">
+        <h2 style='color: #009B3A; font-size: 1.5rem; margin-top: 0;'>Sistema de Triagem</h2>
+    </div>
+""", unsafe_allow_html=True)
+
 # Define o dispositivo como CUDA (GPU) se disponível, caso contrário, utiliza CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -138,10 +269,8 @@ casos_validados = carregar_casos_validados()
 # Insere os casos validados no banco vetorial
 for i, (sintomas, resposta) in enumerate(casos_validados):
     case_id = f"validated_case_{i}"
-    try:
-        # Gera embedding apenas dos sintomas, pois é o que usaremos para comparação
+    try:        # Gera embedding apenas dos sintomas, pois é o que usaremos para comparação
         embedding = embed_text(sintomas)
-        st.write(f"Dimensão do embedding para caso validado {i}: {len(embedding)}")
         collection.add(
             embeddings=[embedding],
             ids=[case_id],
@@ -153,8 +282,6 @@ for i, (sintomas, resposta) in enumerate(casos_validados):
 # =============================================
 # INTERFACE PRINCIPAL
 # =============================================
-# Mostra o título da interface da aplicação no navegador
-st.title("Assistente de Triagem Clínica - HCI")
 
 # Cria um campo de texto onde enfermeiro(a) (ou outro profissional de saúde) pode informar os sintomas do paciente
 new_case = st.text_area("Descreva os sintomas do paciente na triagem")
@@ -215,19 +342,18 @@ Condutas
                 
                 # Exibe o resultado formatado
                 st.subheader("Resultado da Triagem")
-                
-                # Extrai a classificação de risco do texto da resposta
+                  # Extrai a classificação de risco do texto da resposta
                 texto_resposta = str(resposta).lower()
                 if "vermelho" in texto_resposta:
-                    st.markdown("🔴 **Classificação:** :red[EMERGÊNCIA (VERMELHO)]")
+                    st.markdown("<div style='background-color: #FF0000; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🔴 Classificação: EMERGÊNCIA (VERMELHO)</h3></div>", unsafe_allow_html=True)
                 elif "laranja" in texto_resposta:
-                    st.markdown("🟠 **Classificação:** :orange[MUITO URGENTE (LARANJA)]")
+                    st.markdown("<div style='background-color: #FF7F00; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟠 Classificação: MUITO URGENTE (LARANJA)</h3></div>", unsafe_allow_html=True)
                 elif "amarelo" in texto_resposta:
-                    st.markdown("🟡 **Classificação:** :yellow[URGENTE (AMARELO)]")
+                    st.markdown("<div style='background-color: #FFFF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟡 Classificação: URGENTE (AMARELO)</h3></div>", unsafe_allow_html=True)
                 elif "verde" in texto_resposta:
-                    st.markdown("🟢 **Classificação:** :green[POUCO URGENTE (VERDE)]")
+                    st.markdown("<div style='background-color: #00FF00; color: #333; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🟢 Classificação: POUCO URGENTE (VERDE)</h3></div>", unsafe_allow_html=True)
                 elif "azul" in texto_resposta:
-                    st.markdown("🔵 **Classificação:** :blue[NÃO URGENTE (AZUL)]")
+                    st.markdown("<div style='background-color: #0000FF; color: white; padding: 1rem; border-radius: 5px; margin: 1rem 0;'><h3 style='margin:0'>🔵 Classificação: NÃO URGENTE (AZUL)</h3></div>", unsafe_allow_html=True)
                 
                 # Divide a resposta em seções
                 st.markdown("### Justificativa Clínica")

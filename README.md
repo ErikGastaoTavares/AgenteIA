@@ -41,8 +41,14 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 ### Aplicativo de Triagem (AppTriagem.py)
 ```bash
-cd AssistenteIA
-streamlit run AppTriagem.py
+ollama serve 
+#Ativar o Ollama modelo Mistral
+.\venv310\Scripts\Activate.ps1 
+#Iniciar o ambiente virtual
+cd AssistenteIA 
+#Caminho para o diretório 
+streamlit run AppTriagem.py 
+#Rodar o App
 ```
 Acesse: http://localhost:8501
 
