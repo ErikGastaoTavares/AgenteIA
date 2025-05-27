@@ -103,7 +103,9 @@ css = '''
     .stButton>button:hover {
         background-color: var(--hci-azul-claro) !important;
     }
+
       /* Área de texto */
+
     .stTextArea>div>div>textarea {
         border: 2px solid var(--hci-azul) !important;
         border-radius: 5px !important;
