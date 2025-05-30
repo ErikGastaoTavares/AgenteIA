@@ -23,6 +23,8 @@ from pathlib import Path
 from transformers import AutoTokenizer, AutoModel
 import torch
 
+
+
 # Configuração do tema personalizado do HCI
 st.set_page_config(
     page_title="Triagem Inteligente HCI",
@@ -197,6 +199,24 @@ css = '''
     .success {
         color: var(--hci-verde) !important;
     }
+
+    /* Estilo para seções de debug */
+    .debug-section {
+        color: white !important;
+        background-color: #333 !important;
+        padding: 1rem !important;
+        border-radius: 5px !important;
+        margin: 1rem 0 !important;
+    }
+    
+    .debug-section h3 {
+        color: white !important;
+        margin: 0 !important;
+    }
+    
+    .debug-section p, .debug-section div {
+        color: white !important;
+    }
 </style>
 '''
 
@@ -225,6 +245,7 @@ model = model.to(device)
 # =============================================
 # FUNÇÕES DE BANCO DE DADOS E VALIDAÇÃO
 # =============================================
+
 # Função para inicializar o banco de dados de validação
 def init_validation_db():
     conn = sqlite3.connect('./validacao_triagem.db')
@@ -387,27 +408,56 @@ if st.button("Classificar e gerar conduta"):
 
             # Cria a sequência de mensagens para enviar ao modelo de linguagem            
             messages = [
-ChatMessage(
+                ChatMessage(
                     role="system",
-                    content="""Você é um profissional de saúde um possível enfermeiro ou médico que trabalha em um hospital.
-IMPORTANTE: Você não pode colocar na resposta citações de casos existentes, apenas usar os sintomas e casos similares para gerar a resposta.
-IMPORTANTE: Não coloque na resposta na parte de justificativa e condutas os casos similares a cor que resultante da classificação.
-IMPORTANTE: Não começe nenhuma frase usando alguma cor, apenas use as cores para classificar o risco do paciente.
-IMPORTANTE: Estruture sua resposta neste formato:
+                    content="""Você é um assistente especializado em triagem clínica baseado no Protocolo de Manchester.
+
+ESTRUTURA OBRIGATÓRIA DA RESPOSTA:
+Classificação
+[COR_ÚNICA]
 
 Justificativa
-- Use apenas uma palavra para indicar a cor da classificação de risco do paciente, sem repetir a cor;
-- Analise os principais sintomas apresentados;
-- Indique o risco potencial;
+[Análise clínica detalhada sem mencionar cores]
 
 Condutas
-- Procedimentos imediatos necessários;
-- Exames ou avaliações recomendadas;
-- Encaminhamentos específicos;
-IMPORTANTE: Não precisa começar os 3 pontos da justificativa e condutas com "1.", "2." ou "3.", apenas coloque os pontos;"""
+[Procedimentos e encaminhamentos específicos]
+
+REGRAS PARA CLASSIFICAÇÃO:
+- VERMELHO: Risco de vida imediato (parada cardiorrespiratória, choque, inconsciência)
+- LARANJA: Muito urgente (dor torácica intensa, dispneia grave, alteração neurológica aguda)
+- AMARELO: Urgente (febre alta, dor moderada a intensa, vômitos persistentes)
+- VERDE: Pouco urgente (sintomas leves, condições estáveis)
+- AZUL: Não urgente (condições crônicas estáveis, consultas de rotina)
+
+INSTRUÇÕES ESPECÍFICAS:
+1. Na seção "Classificação": Use APENAS uma palavra (vermelho, laranja, amarelo, verde ou azul)
+2. Na seção "Justificativa": 
+   - NÃO mencione nenhuma cor
+   - Analise sintomas, sinais vitais e fatores de risco
+   - Explique o raciocínio clínico baseado nos achados
+   - Cite protocolos relevantes quando aplicável
+3. Na seção "Condutas":
+   - Liste procedimentos imediatos
+   - Indique exames necessários
+   - Especifique encaminhamentos
+   - Defina tempo máximo para reavaliação
+
+EXEMPLO DE RESPOSTA CORRETA:
+Classificação
+amarelo
+
+Justificativa
+Paciente apresenta sintomas compatíveis com processo infeccioso agudo. A febre elevada associada à taquicardia sugere necessidade de avaliação médica em prazo reduzido para investigação etiológica e início de tratamento apropriado.
+
+Condutas
+- Verificar sinais vitais completos
+- Solicitar hemograma completo e PCR
+- Administrar antitérmico se necessário
+- Reavaliação médica em até 60 minutos"""
                 ),
                 ChatMessage(role="user", content=input_text),
-            ]# Tenta executar a consulta ao modelo (via Ollama)
+            ]
+            # Tenta executar a consulta ao modelo (via Ollama)
             try:
                 resposta = llm.chat(messages)  # Envia as mensagens para o modelo e recebe resposta
                 
@@ -416,8 +466,9 @@ IMPORTANTE: Não precisa começar os 3 pontos da justificativa e condutas com "1
                 st.session_state.sintomas_atuais = new_case
 
                 # CÓDIGO DE DEBUG - Para visualizar a resposta completa
-                st.markdown("### 🔍 Debug - Resposta Completa do Modelo")
+                st.markdown("<div class='debug-section'><h3>🔍 Debug - Texto bruto</h3></div>", unsafe_allow_html=True)
                 st.code(str(resposta), language="text")
+                st.markdown(f"<div class='debug-section'><p>Cores detectadas: {resposta}</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
                 
                 # Exibe o resultado formatado
@@ -427,15 +478,16 @@ IMPORTANTE: Não precisa começar os 3 pontos da justificativa e condutas com "1
                 texto_limpo = str(resposta).replace("assistant:", "").replace("Justificativa:", "").replace("Justificativa", "")
                 
                 # CÓDIGO DE DEBUG - Para visualizar o texto limpo
-                st.markdown("### 🔍 Debug - Texto Após Limpeza")
+                st.markdown("<div class='debug-section'><h3>🔍 Debug - Texto Limpo</h3></div>", unsafe_allow_html=True)
                 st.code(texto_limpo, language="text")
+                st.markdown(f"<div class='debug-section'><p>Cores detectadas: {texto_limpo}</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
 
                 # Extrai a classificação de risco do texto da resposta (usando o texto limpo)
                 texto_resposta = texto_limpo.lower()
                 
                 # CÓDIGO DE DEBUG - Para verificar detecção de cores
-                st.markdown("### 🔍 Debug - Detecção de Cores")
+                st.markdown("<div class='debug-section'><h3>🔍 Debug - Detecção de Cores</h3></div>", unsafe_allow_html=True)
                 cores_detectadas = []
                 if "vermelho" in texto_resposta:
                     cores_detectadas.append("VERMELHO")
@@ -448,7 +500,7 @@ IMPORTANTE: Não precisa começar os 3 pontos da justificativa e condutas com "1
                 if "azul" in texto_resposta:
                     cores_detectadas.append("AZUL")
                 
-                st.write(f"Cores detectadas: {cores_detectadas}")
+                st.markdown(f"<div class='debug-section'><p>Cores detectadas: {cores_detectadas}</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
 
                 # Exibe a classificação colorida
@@ -469,17 +521,66 @@ IMPORTANTE: Não precisa começar os 3 pontos da justificativa e condutas com "1
                 # Divide a resposta em seções
                 partes = texto_limpo.split("Condutas")
 
-                # Exibe a primeira parte (análise)
+                # Extrai a classificação para remover da análise clínica
+                classificacao_detectada = ""
+                if "vermelho" in texto_resposta:
+                    classificacao_detectada = "vermelho"
+                elif "laranja" in texto_resposta:
+                    classificacao_detectada = "laranja"
+                elif "amarelo" in texto_resposta:
+                    classificacao_detectada = "amarelo"
+                elif "verde" in texto_resposta:
+                    classificacao_detectada = "verde"
+                elif "azul" in texto_resposta:
+                    classificacao_detectada = "azul"
+
+                # Exibe a análise clínica (removendo a classificação)
                 st.markdown("### Análise Clínica")
-                st.write(partes[0].strip())
+                primeira_parte = partes[0].strip()
                 
+                # Remove a seção "Classificação" e limpa a justificativa
+                if "Classificação" in primeira_parte:
+                    # Pega apenas a parte da justificativa
+                    if "Justificativa" in primeira_parte:
+                        justificativa = primeira_parte.split("Justificativa")[1].strip()
+                    else:
+                        # Se não tem "Justificativa", pega tudo após "Classificação"
+                        justificativa = primeira_parte.split("Classificação")[1].strip()
+                        # Remove a primeira linha (que é só a cor)
+                        linhas_justificativa = justificativa.split('\n')
+                        if len(linhas_justificativa) > 1:
+                            justificativa = '\n'.join(linhas_justificativa[1:]).strip()
+                else:
+                    justificativa = primeira_parte
+                
+                # Remove a cor da classificação se aparecer no início da justificativa
+                if classificacao_detectada and justificativa.lower().startswith(classificacao_detectada):
+                    justificativa = justificativa[len(classificacao_detectada):].strip()
+                    # Remove traço se existir
+                    if justificativa.startswith("-"):
+                        justificativa = justificativa[1:].strip()
+                
+                # Validação adicional para garantir que há conteúdo na justificativa
+                if not justificativa or len(justificativa.strip()) < 10:
+                    justificativa = "Análise clínica baseada nos sintomas apresentados e protocolos de triagem aplicáveis."
+                
+                st.write(justificativa)
+                
+                # ...existing code...
                 # Exibe as condutas se existirem
                 st.markdown("### Condutas Recomendadas")
+                condutas_texto = ""
                 if len(partes) > 1:
-                    st.write(partes[1].strip())
+                    condutas_texto = partes[1].strip()
                 elif "Condutas" in str(resposta):
-                    condutas = str(resposta).split("Condutas")[1]
-                    st.write(condutas.strip())
+                    condutas_partes = str(resposta).split("Condutas")
+                    if len(condutas_partes) > 1:
+                        condutas_texto = condutas_partes[1].strip()
+                
+                if condutas_texto:
+                    st.write(condutas_texto)
+                else:
+                    st.write("Condutas específicas a serem determinadas pelo profissional de saúde conforme avaliação clínica.")
                 
             except Exception as e:
                 # Em caso de erro, mostra uma mensagem de erro na interface
