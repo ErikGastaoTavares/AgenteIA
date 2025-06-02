@@ -45,6 +45,7 @@ ollama serve #Ativar o Ollama modelo Mistral
 .\venv310\Scripts\Activate.ps1 #Iniciar o ambiente virtual
 cd AssistenteIA  #Caminho para o diretório 
 streamlit run AppTriagem.py #Rodar o App
+streamlit run AppAdminMedico.py #Rodar App de administração
 ```
 Acesse: http://localhost:8501
 

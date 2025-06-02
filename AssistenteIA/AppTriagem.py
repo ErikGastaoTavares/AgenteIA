@@ -467,7 +467,6 @@ Condutas
 
                 # CÓDIGO DE DEBUG - Para visualizar a resposta completa
                 st.markdown("<div class='debug-section'><h3>🔍 Debug - Texto bruto</h3></div>", unsafe_allow_html=True)
-                st.code(str(resposta), language="text")
                 st.markdown(f"<div class='debug-section'><p>Cores detectadas: {resposta}</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
                 
@@ -479,7 +478,6 @@ Condutas
                 
                 # CÓDIGO DE DEBUG - Para visualizar o texto limpo
                 st.markdown("<div class='debug-section'><h3>🔍 Debug - Texto Limpo</h3></div>", unsafe_allow_html=True)
-                st.code(texto_limpo, language="text")
                 st.markdown(f"<div class='debug-section'><p>Cores detectadas: {texto_limpo}</p></div>", unsafe_allow_html=True)
                 st.markdown("---")
 

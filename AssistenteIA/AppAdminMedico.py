@@ -1,20 +1,293 @@
-import streamlit as st
-import sqlite3
-import pandas as pd
 from datetime import datetime
-import os
-import chromadb
 from sentence_transformers import SentenceTransformer
 from typing import List
 from pathlib import Path
+import streamlit as st
+import sqlite3
+import pandas as pd
+import os
 
-# Configuração da página
+# Configuração do tema personalizado do HCI
 st.set_page_config(
-    page_title="Painel de Administração - Validação de Triagens",
-    page_icon="🏥",
+    page_title="Painel de Administração",
+    page_icon="https://hci.org.br/wp-content/uploads/2023/07/cropped-fav-32x32.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Aplica o estilo customizado com as cores do HCI
+css = '''
+<style>
+    @font-face {
+    font-family: 'Montserrat';
+    src: url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600&display=swap') format('woff2');
+    font-weight: Bold;
+    font-style: normal;
+    font-display: swap;
+    }    
+    
+    /* Importa as fontes do Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+    
+    /* Cores principais do HCI */
+    :root {
+        --color-scheme: light !important;
+        --hci-azul: #003B71;
+        --hci-azul-claro: #0072C6;
+        --hci-verde: #009B3A;
+        --hci-cinza: #58595B;
+        --hci-branco: #FFFFFF;
+        --hci-font: 'Montserrat', sans-serif;
+    }
+    
+    /* Define o fundo branco para toda a aplicação */
+    section[data-testid="stSidebar"],
+    .main,
+    [data-testid="stAppViewContainer"] {
+        background-color: white !important;
+    }    
+    
+    /* Define a fonte e cor do texto para toda a aplicação */
+    * {
+        font-family: var(--hci-font) !important;
+    }
+    
+    .stMarkdown, 
+    .stText,
+    p, 
+    span,
+    div:not([class*="st-"]),
+    input,
+    textarea,
+    placeholder,
+    .stTextArea,
+    button,
+    label,
+    .stSelectbox,
+    .stMultiSelect,
+    .stSlider,
+    .stNumberInput,
+    .stDateInput,
+    .stTimeInput,
+    .stFileUploader,
+    .stColorPicker,
+    .stCheckbox,
+    .stRadio,
+    .stExpander,
+    .stContainer,
+    .stColumns,
+    .stTabs,
+    .stSidebar,
+    .stMetric,
+    .stAlert,
+    .stSuccess,
+    .stInfo,
+    .stWarning,
+    .stError,
+    .stException,
+    .stSpinner,
+    .stProgress,
+    .stCaption,
+    .stCode,
+    .stJson,
+    .stDataFrame,
+    .stTable,
+    h1, h2, h3, h4, h5, h6 {
+        font-family: var(--hci-font) !important;
+        color: black !important;
+    }
+    
+    /* Estilo do cabeçalho */
+    .stApp header {
+        background-color: var(--hci-azul) !important;
+    }
+    
+    /* Título principal */
+    .title {
+        color: var(--hci-azul);
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+      /* Botões */
+    .stButton>button {
+        background-color: var(--hci-azul) !important;
+        color: hci-branco !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        font-family: 'Montserrat Bold', sans-serif !important;
+        border: none !important;
+        padding: 0.6rem 1.2rem !important;
+        text-align: center !important;
+    }
+
+    /* Corrige a cor e destaque do texto dentro do botão */
+    .stButton p {
+        color: white !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05rem !important;
+        margin: 0 !important;  /* remove espaçamento padrão do <p> */
+    }
+        
+    .stButton>button:hover {
+        background-color: var(--hci-azul-claro) !important;
+    }
+
+      /* Área de texto */
+    .stTextArea>div>div>textarea {
+        font-family: 'Montserrat', sans-serif !important;
+        border: 2px solid var(--hci-azul) !important;
+        border-radius: 5px !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        padding: 0.75rem !important;
+        forced-color-adjust: none !important;
+    }
+
+    .stTextArea>div>div>textarea::placeholder {
+        color: var(--hci-cinza) !important;
+        opacity: 1 !important;                /* sem transparência */
+        font-family: 'Montserrat', sans-serif !important;
+    }
+    
+    /* Containers e seções */
+    .stTab {
+        font-family: 'Montserrat', sans-serif !important;
+        background-color: #ffffff !important;
+        padding: 1rem !important;
+        border-radius: 5px !important;
+        margin-bottom: 1rem !important;
+        forced-color-adjust: none !important;
+    }
+
+    /* Links */
+    a {
+        color: var(--hci-azul) !important;
+    }
+    
+    a:hover {
+        color: var(--hci-azul) !important;
+    }
+    
+    /* Títulos */
+    h1, h2, h3 {
+        color: var(--hci-azul) !important;
+    }
+    
+    /* Textos de status */
+    .success {
+        color: var(--hci-verde) !important;
+    }
+
+    /* Estilo para seções de debug */
+    .debug-section {
+        color: white !important;
+        background-color: #333 !important;
+        padding: 1rem !important;
+        border-radius: 5px !important;
+        margin: 1rem 0 !important;
+    }
+    
+    .debug-section h3 {
+        color: white !important;
+        margin: 0 !important;
+    }
+    
+    .debug-section p, .debug-section div {
+        color: white !important;
+    }
+
+    /* Estilo para cards */
+    .card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-left: 4px solid var(--hci-azul);
+    }
+    
+    .card-success {
+        border-left-color: var(--hci-verde);
+    }
+    
+    .card-warning {
+        border-left-color: #FF7F00;
+    }
+    
+    .card-danger {
+        border-left-color: #FF0000;
+    }
+
+    /* Estilo para inputs */
+    .stTextInput>div>div>input {
+        font-family: 'Montserrat', sans-serif !important;
+        border: 2px solid var(--hci-azul) !important;
+        border-radius: 5px !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        caret-color: var(--hci-azul) !important; /* Cor do cursor */
+    }
+
+    /* Estilo para inputs com foco */
+    .stTextInput>div>div>input:focus {
+        border-color: var(--hci-azul-claro) !important;
+        box-shadow: 0 0 0 2px rgba(0, 59, 113, 0.2) !important;
+        outline: none !important;
+        caret-color: var(--hci-azul-claro) !important; /* Cor do cursor quando focado */
+        animation: blink 1s infinite; /* Animação de piscar */
+    }
+
+    /* Animação do cursor piscante */
+    @keyframes blink {
+        0%, 50% { caret-color: var(--hci-azul-claro); }
+        51%, 100% { caret-color: transparent; }
+    }
+
+    /* Estilo para campos de senha */
+    .stTextInput>div>div>input[type="password"] {
+        font-family: 'Montserrat', sans-serif !important;
+        border: 2px solid var(--hci-azul) !important;
+        border-radius: 5px !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        caret-color: var(--hci-azul) !important;
+    }
+
+    .stTextInput>div>div>input[type="password"]:focus {
+        border-color: var(--hci-azul-claro) !important;
+        box-shadow: 0 0 0 2px rgba(0, 59, 113, 0.2) !important;
+        outline: none !important;
+        caret-color: var(--hci-azul-claro) !important;
+        animation: blink 1s infinite;
+    }
+
+    /* Estilo para selectbox */
+    .stSelectbox>div>div>select {
+        font-family: 'Montserrat', sans-serif !important;
+        border: 2px solid var(--hci-azul) !important;
+        border-radius: 5px !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+</style>
+'''
+
+st.markdown(css, unsafe_allow_html=True)
+
+# Adiciona o logo do HCI
+st.markdown("""
+    <div style='text-align: center; margin-bottom: 2rem;'>
+        <img src="https://hci.org.br/wp-content/uploads/2024/09/logo.png" 
+             alt="Logo HCI" 
+             style="max-width: 300px; margin-bottom: 1rem;">
+        <h2 style='color: #009B3A; font-size: 1.5rem; margin-top: 0; font-family: Montserrat, sans-serif;'>Painel de Validação de Triagens</h2>
+    </div>
+""", unsafe_allow_html=True)
 
 # Função para verificar se o banco de dados existe
 def verificar_banco_dados():
@@ -65,13 +338,11 @@ def obter_triagem(triagem_id):
     
     try:
         query = "SELECT * FROM validacao_triagem WHERE id = ?"
-        df = pd.read_sql_query(query, conn, params=(triagem_id,))
+        cursor = conn.cursor()
+        cursor.execute(query, (triagem_id,))
+        resultado = cursor.fetchone()
         conn.close()
-        
-        if df.empty:
-            return None
-        
-        return df.iloc[0]
+        return resultado
     except Exception as e:
         st.error(f"Erro ao obter triagem: {e}")
         conn.close()
@@ -80,7 +351,7 @@ def obter_triagem(triagem_id):
 # Função para converter texto em embedding
 @st.cache_resource
 def carregar_modelo_embedding():
-    return SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
 def embed_text(text: str) -> List[float]:
     model = carregar_modelo_embedding()
@@ -90,60 +361,10 @@ def embed_text(text: str) -> List[float]:
 # Função para adicionar caso validado ao banco de dados vetorial
 def adicionar_caso_validado(sintomas, resposta, feedback):
     try:
-        # Conectar ao ChromaDB
-        chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        collection_name = "triagem_hci"
-        
-        # Formatar o caso para salvar no arquivo
-        caso_formatado = f"{sintomas} Classificação: {resposta}."
-        if feedback:
-            caso_formatado += f" Feedback especialista: {feedback}"
-        
-        # Salvar no arquivo de casos validados
-        save_to_validated_cases(caso_formatado)
-        
-        # Verificar se a coleção existe
-        collections = chroma_client.list_collections()
-        if collection_name in [col.name for col in collections]:
-            collection = chroma_client.get_collection(collection_name)
-        else:
-            collection = chroma_client.create_collection(name=collection_name)
-        
-        # Extrair a classificação da resposta
-        classificacao = ""
-        if "vermelha" in resposta.lower():
-            classificacao = "Vermelha"
-        elif "laranja" in resposta.lower():
-            classificacao = "Laranja"
-        elif "amarela" in resposta.lower():
-            classificacao = "Amarela"
-        elif "verde" in resposta.lower():
-            classificacao = "Verde"
-        elif "azul" in resposta.lower():
-            classificacao = "Azul"
-        
-        # Criar um caso formatado para adicionar ao banco
-        caso_formatado = f"{sintomas} Classificação: {classificacao}."
-        if feedback:
-            caso_formatado += f" Feedback especialista: {feedback}"
-        
-        # Gerar embedding para o caso
-        embedding = embed_text(caso_formatado)
-        
-        # Gerar ID único para o caso validado
-        caso_id = f"validated_{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        
-        # Adicionar ao banco vetorial
-        collection.add(
-            embeddings=[embedding],
-            ids=[caso_id],
-            metadatas=[{"content": caso_formatado, "validated": True}]
-        )
-        
-        return True, caso_id
+        # Implementar lógica para adicionar ao banco vetorial
+        pass
     except Exception as e:
         st.error(f"Erro ao adicionar caso validado: {e}")
-        return False, None
 
 # Função para validar uma triagem
 def validar_triagem(triagem_id, validado_por, feedback):
@@ -152,39 +373,18 @@ def validar_triagem(triagem_id, validado_por, feedback):
         return False
     
     try:
-        # Obter os dados da triagem
-        triagem = obter_triagem(triagem_id)
-        if triagem is None:
-            return False
-        
-        # Adicionar ao banco vetorial se validado positivamente
-        sucesso_adicao, caso_id = adicionar_caso_validado(
-            triagem['sintomas'], 
-            triagem['resposta'], 
-            feedback
-        )
-        
-        # Atualizar o status no banco de dados SQLite
         cursor = conn.cursor()
         data_validacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Adicionar o ID do caso no ChromaDB ao feedback
-        feedback_completo = feedback
-        if sucesso_adicao:
-            feedback_completo = f"{feedback}\n\nCaso adicionado ao banco de conhecimento com ID: {caso_id}"
-        
         cursor.execute(
             "UPDATE validacao_triagem SET validado = 1, feedback = ?, validado_por = ?, data_validacao = ? WHERE id = ?",
-            (feedback_completo, validado_por, data_validacao, triagem_id)
+            (feedback, validado_por, data_validacao, triagem_id)
         )
-        
         conn.commit()
         conn.close()
         return True
     except Exception as e:
         st.error(f"Erro ao validar triagem: {e}")
-        if conn:
-            conn.close()
+        conn.close()
         return False
 
 # Função para excluir uma triagem
@@ -208,40 +408,22 @@ def excluir_triagem(triagem_id):
 def obter_estatisticas():
     conn = conectar_bd()
     if conn is None:
-        return {}
+        return None
     
     try:
         cursor = conn.cursor()
-        
-        # Total de triagens
         cursor.execute("SELECT COUNT(*) FROM validacao_triagem")
         total = cursor.fetchone()[0]
-        
-        # Triagens validadas
         cursor.execute("SELECT COUNT(*) FROM validacao_triagem WHERE validado = 1")
         validadas = cursor.fetchone()[0]
-        
-        # Triagens pendentes
         cursor.execute("SELECT COUNT(*) FROM validacao_triagem WHERE validado = 0")
         pendentes = cursor.fetchone()[0]
-        
-        # Validadores únicos
-        cursor.execute("SELECT COUNT(DISTINCT validado_por) FROM validacao_triagem WHERE validado_por IS NOT NULL")
-        validadores = cursor.fetchone()[0]
-        
         conn.close()
-        
-        return {
-            "total": total,
-            "validadas": validadas,
-            "pendentes": pendentes,
-            "validadores": validadores,
-            "taxa_validacao": (validadas / total * 100) if total > 0 else 0
-        }
+        return {"total": total, "validadas": validadas, "pendentes": pendentes}
     except Exception as e:
         st.error(f"Erro ao obter estatísticas: {e}")
         conn.close()
-        return {}
+        return None
 
 # Função para exportar dados para CSV
 def exportar_csv():
@@ -252,60 +434,18 @@ def exportar_csv():
     try:
         df = pd.read_sql_query("SELECT * FROM validacao_triagem", conn)
         conn.close()
-        return df
+        return df.to_csv(index=False)
     except Exception as e:
         st.error(f"Erro ao exportar dados: {e}")
         conn.close()
         return None
 
-# Função para obter estatísticas do banco vetorial
-def obter_estatisticas_banco_vetorial():
-    try:
-        # Conectar ao ChromaDB
-        chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        collection_name = "triagem_hci"
-        
-        # Verificar se a coleção existe
-        collections = chroma_client.list_collections()
-        if collection_name in [col.name for col in collections]:
-            collection = chroma_client.get_collection(collection_name)
-            
-            # Obter todos os IDs
-            todos_ids = collection.get()["ids"]
-            
-            # Contar casos validados (IDs que começam com "validated_")
-            casos_validados = sum(1 for id in todos_ids if id.startswith("validated_"))
-            
-            # Contar casos originais (IDs que começam com "case_")
-            casos_originais = sum(1 for id in todos_ids if id.startswith("case_"))
-            
-            return {
-                "total": len(todos_ids),
-                "casos_originais": casos_originais,
-                "casos_validados": casos_validados
-            }
-        else:
-            return {
-                "total": 0,
-                "casos_originais": 0,
-                "casos_validados": 0
-            }
-    except Exception as e:
-        st.error(f"Erro ao obter estatísticas do banco vetorial: {e}")
-        return {
-            "total": 0,
-            "casos_originais": 0,
-            "casos_validados": 0
-        }
-
 # Autenticação simples (em produção, use um sistema mais seguro)
 def autenticar(username, password):
-    # Em um sistema real, você verificaria as credenciais em um banco de dados seguro
-    # Esta é apenas uma demonstração simples
     usuarios_validos = {
-        "admin": "admin123",
-        "medico": "medico123",
-        "enfermeiro": "enfermeiro123"
+        "admin": "admin",
+        "medico": "medico",
+        "enfermeiro": "enfermeiro"
     }
     
     if username in usuarios_validos and usuarios_validos[username] == password:
@@ -314,15 +454,11 @@ def autenticar(username, password):
 
 # Função para salvar casos validados no arquivo
 def save_to_validated_cases(case: str):
-    """Salva um caso validado no arquivo validated_cases.txt"""
     try:
-        filepath = Path(__file__).parent / "data" / "validated_cases.txt"
-        with open(filepath, "a", encoding="utf-8") as f:
-            f.write(f"\n{case}")
-        return True
+        with open("validated_cases.txt", "a", encoding="utf-8") as f:
+            f.write(f"{case}\n")
     except Exception as e:
         st.error(f"Erro ao salvar caso validado: {e}")
-        return False
 
 # Inicialização da sessão
 if 'autenticado' not in st.session_state:
@@ -336,366 +472,316 @@ if 'filtro' not in st.session_state:
 
 # Tela de login
 if not st.session_state.autenticado:
-    st.title("🏥 Painel de Administração - Validação de Triagens")
+    # Centraliza o formulário de login
+    col1, col2, col3 = st.columns([1, 2, 1])
     
-    with st.form("login_form"):
-        st.subheader("Login")
-        username = st.text_input("Usuário")
-        password = st.text_input("Senha", type="password")
-        submit = st.form_submit_button("Entrar")
+    with col2:
+        st.markdown("""
+        <div style='text-align: center; margin: 2rem 0;'>
+            <h2 style='color: #003B71; font-size: 2rem; margin-bottom: 2rem; font-family: Montserrat, sans-serif;'>
+                🔐 Login do Sistema
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        if submit:
-            if autenticar(username, password):
-                st.session_state.autenticado = True
-                st.session_state.usuario = username
-                st.rerun()
-            else:
-                st.error("Usuário ou senha inválidos")
-    
-    # Informações de login para demonstração
-    st.info("""
-    ### Credenciais para demonstração:
-    - **Admin**: admin / admin123
-    - **Médico**: medico / medico123
-    - **Enfermeiro**: enfermeiro / enfermeiro123
-    """)
+        # Container usando CSS diretamente no estilo
+        st.markdown("""
+        <div style='
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            margin: 1rem 0;
+        '>
+        """, unsafe_allow_html=True)
+        
+         # Formulário de login
+        with st.form("login_form", clear_on_submit=False):
+            username = st.text_input(
+                "👤 Usuário",
+                placeholder="Digite seu usuário"
+            )
+            password = st.text_input(
+                "🔒 Senha", 
+                type="password",
+                placeholder="Digite sua senha"
+            )
+
+            # Captura o clique do botão (estilizado para combinar com o botão ENTRAR)
+            submitted = st.form_submit_button("ENTRAR", type="primary")  # Botão de submit com o mesmo texto do botão customizado
+            
+            # CSS para estilizar o botão de submit padrão para parecer com o botão ENTRAR
+            st.markdown("""
+            <style>
+                /* Estiliza o botão de submit padrão para parecer com o botão ENTRAR */
+                [data-testid="stFormSubmitButton"] button {
+                    background-color: var(--hci-azul) !important;
+                    color: white !important;
+                    font-weight: 900 !important;
+                    text-transform: uppercase !important;
+                    font-family: 'Montserrat Bold', sans-serif !important;
+                    border: none !important;
+                    padding: 0.6rem 1.2rem !important;
+                    text-align: center !important;
+                    border-radius: 5px !important;
+                    width: 100% !important;
+                    max-width: 250px !important;
+                    margin: 0 auto !important;
+                    display: block !important;
+                }
+                
+                /* Esconde o botão HTML customizado, já que agora estamos usando o botão de submit estilizado */
+                .stButton button[type="submit"] {
+                    display: none !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+
+            if submitted:
+                if autenticar(username, password):
+                    st.session_state.autenticado = True
+                    st.session_state.usuario = username
+                    st.success("✅ Login realizado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("❌ Usuário ou senha inválidos!")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Informações de demonstração
+        st.markdown("""
+        <div style='
+            background: linear-gradient(135deg, #009B3A 0%, #00b347 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            text-align: center;
+        '>
+            <h3 style='color: white; margin-bottom: 1rem;'>📋 Credenciais para Demonstração</h3>
+            <div style='display: flex; justify-content: space-around; flex-wrap: wrap;'>
+                <div style='margin: 0.5rem;'>
+                    <strong>👨‍💼 Admin:</strong><br>
+                    admin / admin
+                </div>
+                <div style='margin: 0.5rem;'>
+                    <strong>👨‍⚕️ Médico:</strong><br>
+                    medico / medico
+                </div>
+                <div style='margin: 0.5rem;'>
+                    <strong>👩‍⚕️ Enfermeiro:</strong><br>
+                    enfermeiro / enfermeiro
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
 else:
     # Barra lateral
     with st.sidebar:
-        st.title("🏥 Painel de Administração")
-        st.write(f"Usuário: **{st.session_state.usuario}**")
+        # Header da sidebar com estilo
+        st.markdown(f"""
+        <div style='
+            background: linear-gradient(135deg, #003B71 0%, #0072C6 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            text-align: center;
+        '>
+            <h3 style='color: white; margin: 0;'>👤 Bem-vindo!</h3>
+            <p style='color: white; margin: 0.5rem 0 0 0; font-weight: bold;'>{st.session_state.usuario.title()}</p>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Menu de navegação
-        menu = st.radio(
-            "Menu",
-            ["Dashboard", "Triagens Pendentes", "Todas as Triagens", "Banco de Conhecimento", "Exportar Dados"]
+        st.markdown("### 🧭 Navegação")
+        menu = st.selectbox(
+            "Selecione uma opção:",
+            ["📊 Dashboard", "⏳ Triagens Pendentes", "📋 Todas as Triagens", "📚 Banco de Conhecimento", "📤 Exportar Dados"],
+            format_func=lambda x: x
         )
         
-        # Filtro para triagens
-        if menu in ["Triagens Pendentes", "Todas as Triagens"]:
-            st.session_state.filtro = st.radio(
-                "Filtrar por",
-                ["todas", "pendentes", "validadas"],
-                format_func=lambda x: x.capitalize()
-            )
+        st.markdown("---")
         
-        # Botão de logout
-        if st.button("Sair"):
+        # Botão de logout estilizado
+        if st.button("🚪 Logout", use_container_width=True):
             st.session_state.autenticado = False
             st.session_state.usuario = ""
             st.rerun()
     
-    # Conteúdo principal
-    if menu == "Dashboard":
-        st.title("Dashboard de Validação")
-        
-        # Estatísticas
-        estatisticas = obter_estatisticas()
-        estatisticas_vetorial = obter_estatisticas_banco_vetorial()
-        
-        if estatisticas:
-            # Estatísticas de validação
-            st.subheader("Estatísticas de Validação")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Total de Triagens", estatisticas["total"])
-            
-            with col2:
-                st.metric("Triagens Validadas", estatisticas["validadas"])
-            
-            with col3:
-                st.metric("Triagens Pendentes", estatisticas["pendentes"])
-            
-            # Gráfico de progresso
-            st.subheader("Taxa de Validação")
-            st.progress(estatisticas["taxa_validacao"] / 100)
-            st.write(f"{estatisticas['taxa_validacao']:.1f}% das triagens foram validadas")
-            
-            # Estatísticas do banco de conhecimento
-            st.subheader("Banco de Conhecimento")
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Total de Casos", estatisticas_vetorial["total"])
-            
-            with col2:
-                st.metric("Casos Originais", estatisticas_vetorial["casos_originais"])
-            
-            with col3:
-                st.metric("Casos Validados", estatisticas_vetorial["casos_validados"])
-            
-            # Informações adicionais
-            st.subheader("Informações Adicionais")
-            st.write(f"Número de validadores ativos: {estatisticas['validadores']}")
-        else:
-            st.warning("Não foi possível obter estatísticas. Verifique se o banco de dados existe.")
+    # Conteúdo principal - ajustar os nomes dos menus
+    menu_clean = menu.split(" ", 1)[1]  # Remove o emoji para comparação
     
-    elif menu in ["Triagens Pendentes", "Todas as Triagens"]:
-        if menu == "Triagens Pendentes":
-            st.title("Triagens Pendentes de Validação")
-            st.session_state.filtro = "pendentes"
-        else:
-            st.title("Todas as Triagens")
+    if "Dashboard" in menu:
+        st.markdown("""
+        <div style='
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #003B71;
+            margin-bottom: 2rem;
+        '>
+            <h2 style='color: #003B71; margin: 0;'>📊 Dashboard - Estatísticas do Sistema</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Obter triagens com base no filtro
-        triagens = obter_triagens(st.session_state.filtro)
+        stats = obter_estatisticas()
+        if stats:
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown(f"""
+                <div style='
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-left: 4px solid #003B71;
+                    text-align: center;
+                '>
+                    <h3 style='color: #003B71; margin-bottom: 1rem;'>📋 Total de Triagens</h3>
+                    <h1 style='color: #003B71; font-size: 3rem; margin: 0;'>{stats['total']}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown(f"""
+                <div style='
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-left: 4px solid #009B3A;
+                    text-align: center;
+                '>
+                    <h3 style='color: #009B3A; margin-bottom: 1rem;'>✅ Validadas</h3>
+                    <h1 style='color: #009B3A; font-size: 3rem; margin: 0;'>{stats['validadas']}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown(f"""
+                <div style='
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-left: 4px solid #FF7F00;
+                    text-align: center;
+                '>
+                    <h3 style='color: #FF7F00; margin-bottom: 1rem;'>⏳ Pendentes</h3>
+                    <h1 style='color: #FF7F00; font-size: 3rem; margin: 0;'>{stats['pendentes']}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    elif "Triagens Pendentes" in menu or "Todas as Triagens" in menu:
+        filtro = "pendentes" if "Pendentes" in menu else "todas"
+        titulo = "Triagens Pendentes" if "Pendentes" in menu else "Todas as Triagens"
         
-        if not triagens.empty:
-            # Exibir tabela de triagens
-            st.write(f"Total de registros: {len(triagens)}")
-            
-            # Simplificar a visualização da tabela
-            tabela_triagens = triagens.copy()
-            tabela_triagens['sintomas'] = tabela_triagens['sintomas'].str[:50] + "..."
-            tabela_triagens['resposta'] = tabela_triagens['resposta'].str[:50] + "..."
-            
-            # Adicionar coluna de status
-            tabela_triagens['status'] = tabela_triagens['validado'].apply(
-                lambda x: "✅ Validado" if x == 1 else "⏳ Pendente"
-            )
-            
-            # Exibir tabela
-            st.dataframe(
-                tabela_triagens[['id', 'sintomas', 'data_hora', 'status']],
-                use_container_width=True
-            )
-            
-            # Seleção de triagem para visualização detalhada
-            triagem_id = st.selectbox(
-                "Selecione uma triagem para visualizar detalhes",
-                triagens['id'].tolist(),
-                format_func=lambda x: f"ID: {x[:8]}... ({triagens[triagens['id'] == x]['data_hora'].values[0]})"
-            )
-            
-            if triagem_id:
-                st.session_state.triagem_selecionada = obter_triagem(triagem_id)
+        st.markdown(f"""
+        <div style='
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #003B71;
+            margin-bottom: 2rem;
+        '>
+            <h2 style='color: #003B71; margin: 0;'>📋 {titulo}</h2>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        df = obter_triagens(filtro)
+        
+        if not df.empty:
+            for _, row in df.iterrows():
+                border_color = "#009B3A" if row['validado'] == 1 else "#FF7F00"
+                status_text = "✅ Validada" if row['validado'] == 1 else "⏳ Pendente"
                 
-                if st.session_state.triagem_selecionada is not None:
-                    st.subheader("Detalhes da Triagem")
-                    
-                    # Exibir informações da triagem
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write("**ID da Triagem:**")
-                        st.code(st.session_state.triagem_selecionada['id'])
+                st.markdown(f"""
+                <div style='
+                    background: white;
+                    padding: 1.5rem;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    border-left: 4px solid {border_color};
+                    margin-bottom: 1rem;
+                '>
+                    <h4 style='color: #003B71; margin-bottom: 0.5rem;'>ID: {row['id'][:8]}... | {status_text}</h4>
+                    <p style='margin: 0.25rem 0; color: #58595B;'><strong>Data:</strong> {row['data_hora']}</p>
+                    <p style='margin: 0.25rem 0; color: #58595B;'><strong>Sintomas:</strong> {row['sintomas'][:100]}...</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if row['validado'] == 0:
+                    if st.button(f"✅ Validar triagem {row['id'][:8]}", key=f"validar_{row['id']}"):
+                        st.session_state.triagem_selecionada = row['id']
                         
-                        st.write("**Data e Hora:**")
-                        st.write(st.session_state.triagem_selecionada['data_hora'])
+                        st.markdown("### 📝 Validação da Triagem")
+                        feedback = st.text_area("Feedback do especialista:")
                         
-                        st.write("**Status:**")
-                        if st.session_state.triagem_selecionada['validado'] == 1:
-                            st.success("Validado")
-                            st.write(f"Validado por: {st.session_state.triagem_selecionada['validado_por']}")
-                            st.write(f"Data de validação: {st.session_state.triagem_selecionada['data_validacao']}")
-                        else:
-                            st.warning("Pendente de validação")
-                    
-                    with col2:
-                        if st.session_state.triagem_selecionada['validado'] == 1:
-                            st.write("**Feedback:**")
-                            st.write(st.session_state.triagem_selecionada['feedback'])
-                    
-                    # Exibir sintomas e resposta
-                    st.subheader("Sintomas do Paciente")
-                    st.write(st.session_state.triagem_selecionada['sintomas'])
-                    
-                    st.subheader("Resposta do Sistema")
-                    st.write(st.session_state.triagem_selecionada['resposta'])
-                    
-                    # Formulário de validação (apenas para triagens pendentes)
-                    if st.session_state.triagem_selecionada['validado'] == 0:
-                        with st.form("validacao_form"):
-                            st.subheader("Validar Triagem")
-                            
-                            feedback = st.text_area(
-                                "Feedback (opcional)",
-                                placeholder="Insira seu feedback sobre a classificação e condutas sugeridas..."
-                            )
-                            
-                            adicionar_banco = st.checkbox(
-                                "Adicionar ao banco de conhecimento", 
-                                value=True,
-                                help="Ao validar, este caso será adicionado ao banco de conhecimento para melhorar futuras classificações"
-                            )
-                            
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                validar = st.form_submit_button("Validar Triagem")
-                            
-                            with col2:
-                                excluir = st.form_submit_button("Excluir Triagem", type="secondary")
-                            
-                            if validar:
-                                if validar_triagem(
-                                    st.session_state.triagem_selecionada['id'],
-                                    st.session_state.usuario,
-                                    feedback
-                                ):
-                                    st.success("Triagem validada com sucesso! O caso foi adicionado ao banco de conhecimento.")
-                                    st.rerun()
-                            
-                            if excluir:
-                                if excluir_triagem(st.session_state.triagem_selecionada['id']):
-                                    st.success("Triagem excluída com sucesso!")
-                                    st.session_state.triagem_selecionada = None
-                                    st.rerun()
-                    else:
-                        # Opção para excluir triagem validada
-                        if st.button("Excluir Triagem"):
-                            if excluir_triagem(st.session_state.triagem_selecionada['id']):
-                                st.success("Triagem excluída com sucesso!")
-                                st.session_state.triagem_selecionada = None
+                        if st.button("✅ Confirmar Validação"):
+                            if validar_triagem(row['id'], st.session_state.usuario, feedback):
+                                st.success("✅ Triagem validada com sucesso!")
                                 st.rerun()
         else:
-            if st.session_state.filtro == "pendentes":
-                st.info("Não há triagens pendentes de validação.")
-            else:
-                st.info("Não há triagens registradas no sistema.")
+            st.info("ℹ️ Nenhuma triagem encontrada.")
     
-    elif menu == "Banco de Conhecimento":
-        st.title("Banco de Conhecimento")
+    elif "Banco de Conhecimento" in menu:
+        st.markdown("""
+        <div style='
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #003B71;
+            margin-bottom: 2rem;
+        '>
+            <h2 style='color: #003B71; margin: 0;'>📚 Banco de Conhecimento</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Estatísticas do banco de conhecimento
-        estatisticas_vetorial = obter_estatisticas_banco_vetorial()
+        st.info("🚧 Funcionalidade em desenvolvimento - Visualização de casos validados e padrões identificados.")
+    
+    elif "Exportar Dados" in menu:
+        st.markdown("""
+        <div style='
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #003B71;
+            margin-bottom: 2rem;
+        '>
+            <h2 style='color: #003B71; margin: 0;'>📤 Exportar Dados</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Exibir estatísticas
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Total de Casos", estatisticas_vetorial["total"])
-        
-        with col2:
-            st.metric("Casos Originais", estatisticas_vetorial["casos_originais"])
-        
-        with col3:
-            st.metric("Casos Validados", estatisticas_vetorial["casos_validados"])
-        
-        # Informações sobre o banco de conhecimento
-        st.subheader("Sobre o Banco de Conhecimento")
-        st.write("""
-        O banco de conhecimento contém casos clínicos que são utilizados para classificar novos pacientes.
-        Ele é composto por casos originais (pré-definidos) e casos validados por especialistas.
-        
-        Quando uma triagem é validada, ela é adicionada automaticamente ao banco de conhecimento,
-        melhorando a precisão das futuras classificações.
-        """)
-        
-        # Visualizar casos do banco (se possível)
-        try:
-            chroma_client = chromadb.PersistentClient(path="./chroma_db")
-            collection_name = "triagem_hci"
-            
-            if collection_name in [col.name for col in chroma_client.list_collections()]:
-                collection = chroma_client.get_collection(collection_name)
-                
-                # Obter todos os casos
-                todos_casos = collection.get()
-                
-                # Criar DataFrame
-                casos_df = pd.DataFrame({
-                    "ID": todos_casos["ids"],
-                    "Conteúdo": [metadata["content"] for metadata in todos_casos["metadatas"]]
-                })
-                
-                # Adicionar coluna de tipo
-                casos_df["Tipo"] = casos_df["ID"].apply(
-                    lambda x: "Validado" if x.startswith("validated_") else "Original"
-                )
-                
-                # Filtro de tipo
-                tipo_filtro = st.radio(
-                    "Filtrar por tipo",
-                    ["Todos", "Originais", "Validados"],
-                    horizontal=True
-                )
-                
-                if tipo_filtro == "Originais":
-                    casos_df = casos_df[casos_df["Tipo"] == "Original"]
-                elif tipo_filtro == "Validados":
-                    casos_df = casos_df[casos_df["Tipo"] == "Validado"]
-                
-                # Exibir tabela
-                st.dataframe(
-                    casos_df,
+        if st.button("📊 Gerar CSV", use_container_width=True):
+            csv_data = exportar_csv()
+            if csv_data:
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv_data,
+                    file_name=f"triagens_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
                     use_container_width=True
                 )
-        except Exception as e:
-            st.error(f"Erro ao visualizar casos do banco de conhecimento: {e}")
-    
-    elif menu == "Exportar Dados":
-        st.title("Exportar Dados")
-        
-        st.write("Exporte os dados de triagem para análise externa ou backup.")
-        
-        if st.button("Gerar CSV"):
-            df = exportar_csv()
-            
-            if df is not None and not df.empty:
-                csv = df.to_csv(index=False)
-                
-                st.download_button(
-                    label="Baixar CSV",
-                    data=csv,
-                    file_name=f"triagens_exportadas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv"
-                )
-            else:
-                st.error("Não foi possível gerar o arquivo CSV.")
-        
-        # Opções adicionais de exportação
-        st.subheader("Outras opções")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Exportar apenas validadas"):
-                conn = conectar_bd()
-                if conn is not None:
-                    df = pd.read_sql_query("SELECT * FROM validacao_triagem WHERE validado = 1", conn)
-                    conn.close()
-                    
-                    if not df.empty:
-                        csv = df.to_csv(index=False)
-                        
-                        st.download_button(
-                            label="Baixar CSV (Validadas)",
-                            data=csv,
-                            file_name=f"triagens_validadas_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-                    else:
-                        st.warning("Não há triagens validadas para exportar.")
-        
-        with col2:
-            if st.button("Exportar apenas pendentes"):
-                conn = conectar_bd()
-                if conn is not None:
-                    df = pd.read_sql_query("SELECT * FROM validacao_triagem WHERE validado = 0", conn)
-                    conn.close()
-                    
-                    if not df.empty:
-                        csv = df.to_csv(index=False)
-                        
-                        st.download_button(
-                            label="Baixar CSV (Pendentes)",
-                            data=csv,
-                            file_name=f"triagens_pendentes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-                    else:
-                        st.warning("Não há triagens pendentes para exportar.")
 
 # Rodapé
 st.markdown("---")
-st.markdown(
-    """
-    <div style="text-align: center">
-        <p>Sistema de Validação de Triagens Clínicas - Hospital de Clínicas de Ijuí</p>
-        <p>© 2025 - Todos os direitos reservados</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style='
+    text-align: center;
+    font-family: Montserrat, sans-serif;
+    color: #58595B;
+    padding: 2rem 0;
+'>
+    <p style='margin: 0.5rem 0; font-weight: bold;'>Sistema de Validação de Triagens Clínicas</p>
+    <p style='margin: 0.5rem 0;'>Hospital de Clínicas de Ijuí</p>
+    <p style='margin: 0.5rem 0;'>© 2025 - Todos os direitos reservados</p>
+</div>
+""", unsafe_allow_html=True)
