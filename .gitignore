@@ -1,7 +1,10 @@
 # Virtual Environment - Todos os tipos
 venv/
 venv*/
-venv310/
+venv_*/
+venv-*/
+venv.*
+venv_new/
 .venv/
 .venv*/
 env/
@@ -36,36 +39,14 @@ wheels/
 *.egg
 MANIFEST
 
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-
-# ChromaDB
-chroma_db/
-
 # Frontend (Next.js)
 frontend/node_modules/
 frontend/.next/
 frontend/out/
-frontend/build/
-frontend/.env.local
-frontend/.env.development.local
-frontend/.env.test.local
-frontend/.env.production.local
-
-# Backend specific
-backend/venv/
-backend/venv*/
-backend/venv310/
-backend/.venv/
 
 # IDE
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
 
 # OS
 .DS_Store

@@ -13,7 +13,6 @@ import chromadb
 from dotenv import load_dotenv
 import requests
 import json
-
 # Initialize FastAPI app
 app = FastAPI(
     title="Sistema de Triagem API",
@@ -124,7 +123,11 @@ async def call_ollama_mistral(prompt: str) -> str:
         
     except Exception as e:
         print(f"Erro ao chamar Ollama: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao processar com IA: {str(e)}")
+        # Lançar exceção para informar que o Ollama não está disponível
+        raise HTTPException(
+            status_code=503, 
+            detail="O serviço Ollama não está disponível. Por favor, verifique se o Ollama está instalado e em execução."
+        )
 
 def embed_text(text: str) -> List[float]:
     if tokenizer is None or model is None:
@@ -309,68 +312,137 @@ if collection is not None:
 async def root():
     return {"message": "Sistema de Triagem API"}
 
-@app.post("/api/processar-triagem")
-async def processar_triagem(triagem: TriagemProcessar):
-    """Endpoint para apenas processar a triagem (NÃO salva no banco)"""
+@app.post("/api/triagem", response_model=TriagemResponse)
+async def realizar_triagem(request: TriagemProcessar):
     try:
-        if not triagem.sintomas.strip():
-            raise HTTPException(status_code=400, detail="Sintomas são obrigatórios")
+        # Check if symptoms are provided
+        if not request.sintomas:
+            raise HTTPException(status_code=400, detail="Sintomas não fornecidos")
         
-        temp_id = str(uuid.uuid4())
+        # Convert symptoms to embedding
+        query_embedding = embed_text(request.sintomas)
         
-        prompt = f"""Você é um especialista em triagem hospitalar seguindo o Protocolo de Manchester.
+        # Query vector database for similar cases
+        results = collection.query(query_embeddings=[query_embedding], n_results=3)
+        
+        # Extract similar cases
+        similar_cases = [metadata["content"] for metadata in results['metadatas'][0]]
+        
+        # Prepare input for LLM
+        input_text = f"Sintomas do novo caso: {request.sintomas}\n\nCasos Similares: {' '.join(similar_cases)}"
+        
+        # Create message sequence for LLM
+        system_prompt = """Você é um assistente especializado em triagem clínica baseado no Protocolo de Manchester.
 
-Analise os seguintes sintomas e classifique a urgência:
-Sintomas: {triagem.sintomas}
-
-Responda EXATAMENTE no seguinte formato:
-
+ESTRUTURA OBRIGATÓRIA DA RESPOSTA:
 Classificação
-[vermelho|laranja|amarelo|verde|azul]
+[COR_ÚNICA]
 
 Justificativa
-[Explicação clínica detalhada baseada nos sintomas apresentados]
+[Análise clínica detalhada sem mencionar cores]
 
 Condutas
-[Procedimentos médicos recomendados, exames e cuidados específicos]"""
+[Procedimentos e encaminhamentos específicos]
 
-        ai_response = await call_ollama_mistral(prompt)
-        classificacao, justificativa, condutas = process_llm_response(ai_response)
-        
-        return {
-            "id": temp_id,
-            "classificacao": classificacao.lower(),
-            "justificativa": justificativa,
-            "condutas": condutas,
-            "success": True
-        }
-        
-    except Exception as e:
-        print(f"Erro ao processar triagem: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno do servidor")
+REGRAS PARA CLASSIFICAÇÃO:
+- VERMELHO: Risco de vida imediato (parada cardiorrespiratória, choque, inconsciência)
+- LARANJA: Muito urgente (dor torácica intensa, dispneia grave, alteração neurológica aguda)
+- AMARELO: Urgente (febre alta, dor moderada a intensa, vômitos persistentes)
+- VERDE: Pouco urgente (sintomas leves, condições estáveis)
+- AZUL: Não urgente (condições crônicas estáveis, consultas de rotina)
 
-@app.post("/api/triagem")
-async def salvar_triagem(triagem: TriagemRequest):
-    """Endpoint para salvar triagem no banco (para validação)"""
-    try:
-        if not triagem.sintomas.strip():
-            raise HTTPException(status_code=400, detail="Sintomas são obrigatórios")
+INSTRUÇÕES ESPECÍFICAS:
+1. Na seção "Classificação": Use APENAS uma palavra (vermelho, laranja, amarelo, verde ou azul)
+2. Na seção "Justificativa": 
+   - NÃO mencione nenhuma cor
+   - Analise sintomas, sinais vitais e fatores de risco
+   - Explique o raciocínio clínico baseado nos achados
+   - Cite protocolos relevantes quando aplicável
+3. Na seção "Condutas":
+   - Liste procedimentos imediatos
+   - Indique exames necessários
+   - Especifique encaminhamentos
+   - Defina tempo máximo para reavaliação"""
         
-        # Salvar no banco de validação
+        prompt = f"{system_prompt}\n\n{input_text}"
+        
+        # Call Ollama API
+        response_text = await call_ollama_mistral(prompt)
+        
+        # Process the response
+        classificacao, justificativa, condutas = process_llm_response(response_text)
+        
+        # Save to validation database
         triagem_id = salvar_para_validacao(
-            triagem.sintomas, 
-            "Triagem processada",
-            triagem.classificacao or "",
-            triagem.justificativa or "",
-            triagem.condutas or ""
+            request.sintomas, 
+            response_text,
+            classificacao,
+            justificativa,
+            condutas
         )
         
         return {
-            "success": True,
             "id": triagem_id,
-            "message": "Triagem salva com sucesso"
+            "sintomas": request.sintomas,
+            "resposta": response_text,
+            "classificacao": classificacao,
+            "justificativa": justificativa,
+            "condutas": condutas,
+            "data_hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
-        
     except Exception as e:
-        print(f"Erro ao salvar triagem: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno do servidor")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar triagem: {str(e)}")
+
+@app.get("/api/triagens")
+async def listar_triagens(filtro: str = "todas"):
+    try:
+        triagens = obter_triagens(filtro)
+        return {"triagens": triagens}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao listar triagens: {str(e)}")
+
+@app.post("/api/validar", response_model=ValidationResponse)
+async def validar(request: ValidationRequest):
+    try:
+        success = validar_triagem(request.triagem_id, request.validado_por, request.feedback)
+        if success:
+            return {"success": True, "message": "Triagem validada com sucesso"}
+        else:
+            return {"success": False, "message": "Erro ao validar triagem"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao validar triagem: {str(e)}")
+
+@app.post("/api/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    try:
+        if autenticar(request.username, request.password):
+            return {"success": True, "message": "Login realizado com sucesso", "user": request.username}
+        else:
+            return {"success": False, "message": "Usuário ou senha inválidos"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao realizar login: {str(e)}")
+
+@app.get("/api/estatisticas")
+async def estatisticas():
+    try:
+        conn = sqlite3.connect('./validacao_triagem.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM validacao_triagem")
+        total = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM validacao_triagem WHERE validado = 1")
+        validadas = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM validacao_triagem WHERE validado = 0")
+        pendentes = cursor.fetchone()[0]
+        conn.close()
+        
+        return {
+            "total": total,
+            "validadas": validadas,
+            "pendentes": pendentes
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao obter estatísticas: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

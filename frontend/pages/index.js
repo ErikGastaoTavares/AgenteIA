@@ -22,53 +22,26 @@ export default function Home() {
     setError('');
     
     try {
-      // Usar endpoint que apenas processa, sem salvar no banco
-      const response = await axios.post('http://localhost:8000/api/processar-triagem', {
+      // Usar diretamente o endpoint de triagem
+      const response = await axios.post('http://localhost:8000/api/triagem', {
         sintomas: symptoms
       });
       
       setResult(response.data);
-      setValidationSent(false); // Reset validation status
+      setValidationSent(true); // Já está salvo no banco
     } catch (err) {
       console.error('Error processing triage:', err);
-      setError('Erro ao processar a triagem. Por favor, tente novamente.');
+      if (err.response && err.response.status === 503) {
+        setError('O serviço Ollama não está disponível. Por favor, verifique se o Ollama está instalado e em execução.');
+      } else {
+        setError('Erro ao processar a triagem. Por favor, tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const sendForValidation = async () => {
-    if (!result) return;
-    
-    setLoading(true);
-    setError('');
-    
-    try {
-      // Agora sim, salvar no banco para validação
-      const response = await axios.post('http://localhost:8000/api/triagem', {
-        sintomas: symptoms,
-        classificacao: result.classificacao,
-        justificativa: result.justificativa,
-        condutas: result.condutas
-      });
-      
-      if (response.data.success || response.data.id) {
-        setValidationSent(true);
-        // Atualizar o result com o ID retornado do banco
-        setResult({
-          ...result,
-          id: response.data.id || response.data.triagem_id
-        });
-      } else {
-        setError('Erro ao enviar para validação. Por favor, tente novamente.');
-      }
-    } catch (err) {
-      console.error('Error sending for validation:', err);
-      setError('Erro ao enviar para validação. Por favor, tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Função removida pois a triagem já é salva diretamente no handleSubmit
 
   const getClassificationColor = (classification) => {
     const classLower = classification.toLowerCase();
@@ -173,22 +146,11 @@ export default function Home() {
                 <p>{result.condutas}</p>
               </div>
               
-              {!validationSent ? (
-                <button 
-                  onClick={sendForValidation} 
-                  className="button"
-                  disabled={loading}
-                  style={{ marginTop: '1rem' }}
-                >
-                  {loading ? 'Enviando...' : 'Enviar para validação por especialistas'}
-                </button>
-              ) : (
-                <div className="card card-success" style={{ marginTop: '1rem' }}>
-                  <p>✅Triagem enviada para validação com sucesso!</p>
-                  <p>ID de Rastreamento: {result.id}</p>
-                  <p>A triagem será revisada por especialistas clínicos para garantir a precisão da classificação e das condutas sugeridas.</p>
-                </div>
-              )}
+              <div className="card card-success" style={{ marginTop: '1rem' }}>
+                <p>✅ Triagem enviada para validação com sucesso!</p>
+                <p>🔍 ID de Rastreamento: {result.id}</p>
+                <p>👨‍⚕️ A triagem será revisada por especialistas clínicos para garantir a precisão da classificação e das condutas sugeridas.</p>
+              </div>
             </div>
           )}
         </main>
